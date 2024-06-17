@@ -1,6 +1,7 @@
 import requests
 import os
 from dotenv import load_dotenv
+import urllib.parse
 
 # Load environment variables from .env file
 load_dotenv()
@@ -14,7 +15,8 @@ def fetch_country_codes():
     return country_codes
 
 def get_weather(api_key, city, country):
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city},{country}&appid={api_key}"
+    encoded_city = urllib.parse.quote(city.strip())
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={encoded_city},{country.strip()}&appid={api_key}"
     response = requests.get(url)
     response.raise_for_status()
     return response.json()
@@ -45,10 +47,13 @@ def main():
     if not api_key:
         raise ValueError("No API key found. Please set the OPENWEATHERMAP_API_KEY environment variable.")
 
-    if args.country not in country_codes:
-        raise ValueError(f"Invalid country code: {args.country}. Please provide a valid ISO 3166-1 alpha-2 country code.")
+    city = args.city.strip()
+    country = args.country.strip()
 
-    weather_data = get_weather(api_key, args.city, args.country)
+    if country not in country_codes:
+        raise ValueError(f"Invalid country code: {country}. Please provide a valid ISO 3166-1 alpha-2 country code.")
+
+    weather_data = get_weather(api_key, city, country)
     print_weather(weather_data)
 
 if __name__ == "__main__":

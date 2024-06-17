@@ -1,5 +1,6 @@
 import pytest
 import requests
+import urllib.parse
 from weather import fetch_country_codes, get_weather, print_weather
 
 @pytest.fixture
@@ -38,7 +39,9 @@ def test_get_weather(requests_mock, mock_weather_data):
     api_key = "fake_api_key"
     city = "London"
     country = "GB"
-    requests_mock.get(f"http://api.openweathermap.org/data/2.5/weather?q={city},{country}&appid={api_key}", json=mock_weather_data)
+    encoded_city = urllib.parse.quote(city)
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={encoded_city},{country}&appid={api_key}"
+    requests_mock.get(url, json=mock_weather_data)
     weather_data = get_weather(api_key, city, country)
     assert weather_data["name"] == "London"
     assert weather_data["sys"]["country"] == "GB"
@@ -55,7 +58,9 @@ def test_invalid_api_key(requests_mock):
     api_key = "invalid_api_key"
     city = "London"
     country = "GB"
-    requests_mock.get(f"http://api.openweathermap.org/data/2.5/weather?q={city},{country}&appid={api_key}", status_code=401)
+    encoded_city = urllib.parse.quote(city)
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={encoded_city},{country}&appid={api_key}"
+    requests_mock.get(url, status_code=401)
     with pytest.raises(requests.exceptions.HTTPError):
         get_weather(api_key, city, country)
 
@@ -64,7 +69,9 @@ def test_empty_city_name(requests_mock):
     api_key = "fake_api_key"
     city = ""
     country = "GB"
-    requests_mock.get(f"http://api.openweathermap.org/data/2.5/weather?q={city},{country}&appid={api_key}", status_code=400)
+    encoded_city = urllib.parse.quote(city)
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={encoded_city},{country}&appid={api_key}"
+    requests_mock.get(url, status_code=400)
     with pytest.raises(requests.exceptions.HTTPError):
         get_weather(api_key, city, country)
 
@@ -84,3 +91,39 @@ def test_print_extreme_weather(capfd, mock_extreme_weather_data):
     assert "Weather in Death Valley, US:" in out
     assert "Temperature: 100.00°C / 212.00°F" in out
     assert "Description: extreme heat" in out
+
+# Test: City name with special characters
+def test_city_name_with_special_characters(requests_mock, mock_weather_data):
+    api_key = "fake_api_key"
+    city = "Pa'ia"
+    country = "US"
+    mock_weather_data["name"] = "Pa'ia"
+    encoded_city = urllib.parse.quote(city)
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={encoded_city},{country}&appid={api_key}"
+    requests_mock.get(url, json=mock_weather_data)
+    weather_data = get_weather(api_key, city, country)
+    assert weather_data["name"] == "Pa'ia"
+
+# Test: City name with multiple words
+def test_city_name_with_multiple_words(requests_mock, mock_weather_data):
+    api_key = "fake_api_key"
+    city = "Downer's Grove"
+    country = "US"
+    mock_weather_data["name"] = "Downer's Grove"
+    encoded_city = urllib.parse.quote(city)
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={encoded_city},{country}&appid={api_key}"
+    requests_mock.get(url, json=mock_weather_data)
+    weather_data = get_weather(api_key, city, country)
+    assert weather_data["name"] == "Downer's Grove"
+
+# Test: City and country with leading and trailing whitespace
+def test_whitespace_in_city_country(requests_mock, mock_weather_data):
+    api_key = "fake_api_key"
+    city = " Las Vegas "
+    country = " US "
+    mock_weather_data["name"] = "Las Vegas"
+    encoded_city = urllib.parse.quote(city.strip())
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={encoded_city},{country.strip()}&appid={api_key}"
+    requests_mock.get(url, json=mock_weather_data)
+    weather_data = get_weather(api_key, city.strip(), country.strip())
+    assert weather_data["name"] == "Las Vegas"
